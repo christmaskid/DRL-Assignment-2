@@ -5,7 +5,7 @@ import numpy as np
 
 # UCT Node for MCTS
 class UCTNode:
-    def __init__(self, state, score, parent=None, action=None):
+    def __init__(self, env, state, score, parent=None, action=None):
         """
         state: current board state (numpy array)
         score: cumulative score at this node
@@ -90,7 +90,7 @@ class UCTMCTS:
           action = random.choice(node.untried_actions)
           node.untried_actions.remove(action)
           next_state, next_score, done, _ = sim_env.step(action)
-          node.children[action] = UCTNode(state=next_state, score=next_score+reward, parent=node, action=action)
+          node.children[action] = UCTNode(self.env, state=next_state, score=next_score, parent=node, action=action)
           node = node.children[action]
 
         # Rollout: Simulate a random game from the expanded node.
