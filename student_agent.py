@@ -231,10 +231,23 @@ class Game2048Env(gym.Env):
         # If the simulated board is different from the current board, the move is legal
         return not np.array_equal(self.board, temp_board)
 
+from mcts import *
+
 def get_action(state, score):
     env = Game2048Env()
-    return random.choice([0, 1, 2, 3]) # Choose a random action
+    # return random.choice([0, 1, 2, 3]) # Choose a random action
     
-    # You can submit this random agent to evaluate the performance of a purely random strategy.
+    uct_mcts = UCTMCTS(env, iterations=50, exploration_constant=1.41, rollout_depth=10)
+    root = UCTNode(state, score)  # Initialize the root node for MCTS
+    
+    # Run multiple simulations to construct and refine the search tree
+    for _ in range(uct_mcts.iterations):
+        uct_mcts.run_simulation(root)
 
+    # Select the best action based on the visit distribution of the root's children
+    best_action, visit_distribution = uct_mcts.best_action_distribution(root)
+    print("MCTS selected action:", best_action, "with visit distribution:", visit_distribution)
+
+    state, reward, done, _ = env.step(best_action)
+    env.render(action=best_action)  # Display the updated game state
 
