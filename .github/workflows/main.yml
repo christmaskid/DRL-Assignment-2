@@ -27,6 +27,8 @@ jobs:
       run: |
         pip install gym
         pip install -r requirements.txt
+        pip install gdown
+        gdown 1dYOwK_qmufzQ6o7LALNrE10Jbpvg6uuV -O approximator.pkl
 
     - name: 3. Ensure env.so is executable
       run: chmod +x env.cpython-38-x86_64-linux-gnu.so
