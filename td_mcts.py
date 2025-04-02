@@ -53,6 +53,7 @@ class TD_MCTS:
         best_score = -float('inf')
         uct_values = dict()
 
+        # Level one: choose an action according to the uct values
         for child in node.children.values():
           if child.visits > 0:
             uct_values[child] = child.total_reward + self.c * math.sqrt(math.log(node.visits) / child.visits)
@@ -68,6 +69,15 @@ class TD_MCTS:
           if selected_child is None or uct_value > best_score:
             best_score = uct_value
             selected_child = child
+
+        # Level two: add an random tile according to the distribution
+        distribution = []
+        selections = []
+        for child in selected_child.children.values():
+           distribution.append(child.visits)
+           selections.append(child)
+        selected_child = selections[np.argmax(distribution)]
+
         return selected_child
 
     def rollout(self, sim_env, depth):
@@ -79,12 +89,11 @@ class TD_MCTS:
           if len(legal_moves) == 0:
             break # leaf; game over
           action = random.choice(legal_moves)
-          _, afterstate, reward,_, _ = sim_env.step(action)
+          _, afterstate, _, _, _ = sim_env.step(action)
           depth -= 1
-          value_est += self.gamma * reward
 
         # TODO: Use the approximator to evaluate the final state.
-        value_est += self.approximator.value(afterstate) # instead of sim_env.score
+        value_est = self.approximator.value(afterstate) # instead of sim_env.score
         return value_est
 
 
@@ -93,7 +102,7 @@ class TD_MCTS:
         while node:
           node.visits += 1
           node.total_reward += (reward - node.total_reward) / node.visits
-          node = node.parent
+          node = node.parent.parent
 
 
     def run_simulation(self, root):
@@ -101,18 +110,24 @@ class TD_MCTS:
         sim_env = self.create_env_from_state(node.state, node.score)
 
         # TODO: Selection: Traverse the tree until reaching an unexpanded node.
-        while node.fully_expanded():
+        done = False
+        while node.fully_expanded() and not done:
           node = self.select_child(node)
-          _, _, _, done, _ = sim_env.step(node.action)
+          _, _, _, done, _ = sim_env.step(node.parent.action)
 
         # TODO: Expansion: If the node is not terminal, expand an untried action.
         if len(node.untried_actions) > 0:
           action = random.choice(node.untried_actions)
           node.untried_actions.remove(action)
-          next_state, _, next_score, done, _ = sim_env.step(action)
-          node.children[action] = TD_MCTS_Node(self.env, state=next_state, score=next_score, parent=node, action=action)
+          next_state, afterstate, next_score, _, _ = sim_env.step(action)
+          # Expand level one: action
+          node.children[action] = TD_MCTS_Node(self.env, state=afterstate, score=next_score, parent=node, action=action)
           node = node.children[action]
-
+          # Expand level two: random tile addition
+          def np_to_tuple(board):
+             return tuple(tuple(b) for b in board)
+          node.children[np_to_tuple(next_state)] = TD_MCTS_Node(self.env, state=next_state, score=next_score, parent=node, action=None)
+          node = node.children[np_to_tuple(next_state)]
 
         # Rollout: Simulate a random game from the expanded node.
         rollout_reward = self.rollout(sim_env, self.rollout_depth)

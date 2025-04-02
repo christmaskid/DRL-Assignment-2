@@ -137,7 +137,8 @@ def td_learning(env, approximator, num_episodes=50000, alpha=0.01, gamma=0.99, e
             action_values = []
             for action in legal_moves:
                 sim_env = copy.deepcopy(env)
-                next_state, afterstate, reward, _, _ = sim_env.step(action)
+                next_state, afterstate, next_score, _, _ = sim_env.step(action)
+                reward = next_score - previous_score
                 action_values.append(reward + gamma * approximator.value(afterstate))
             action = legal_moves[np.argmax(action_values)]
 
@@ -209,7 +210,7 @@ if __name__=="__main__":
     final_scores = td_learning(
        env, approximator, num_episodes=100000, alpha=0.1, gamma=0.99, epsilon=0.1, 
        start_episode=start_episode, save_fn=sys.argv[3])
-    pickle.dump(approximator, open("approximator.pkl", "wb"))
+    pickle.dump(approximator, open(sys.argv[3], "wb"))
 
     plt.plot(final_scores)
     plt.xlabel('Episode')

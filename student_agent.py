@@ -18,11 +18,12 @@ patterns = [
         # https://ko19951231.github.io/2021/01/01/2048/
         ((1, 0), (1, 1), (2, 0), (2, 1), (3, 0), (3, 1)),
         ((1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)),
+        ((1, 2), (1, 3), (2, 2), (2, 3), (3, 2), (3, 3)),
         ((0, 0), (1, 0), (2, 0), (2, 1), (3, 0), (3, 1)),
         ((0, 1), (1, 1), (2, 1), (2, 2), (3, 1), (3, 2)),
     ]
 approximator = NTupleApproximator(board_size=4, patterns=patterns)
-approximator = pickle.load(open("approximator.pkl", "rb"))
+approximator = pickle.load(open("approximator_new.pkl", "rb"))
 
 def get_action(state, score):
     env = Game2048Env()
