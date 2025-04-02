@@ -10,8 +10,7 @@ import random
 import math
 
 from q1 import NTupleApproximator
-from libenv2048.env2048compiled import Game2048Env
-from td_mcts import TD_MCTS, TD_MCTS_Node
+from libenv2048.libenv2048 import Game2048Env
 
 import sys
 sys.modules['__main__'].NTupleApproximator = NTupleApproximator
@@ -29,14 +28,17 @@ def get_action(state, score):
     env = Game2048Env()
     env.board = state
     env.score = score
-        
-    td_mcts = TD_MCTS(env, approximator, iterations=50, exploration_constant=1.41, rollout_depth=10, gamma=0.99)
-    root = TD_MCTS_Node(env, state, score)
+    
+    legal_moves = [a for a in range(4) if env.is_move_legal(a)]
+    # shall not be empty
 
-    # Run multiple simulations to build the MCTS tree
-    for _ in range(td_mcts.iterations):
-        td_mcts.run_simulation(root)
+    # TODO: Use your N-Tuple approximator to play 2048
+    action_values = []
+    for action in legal_moves:
+        sim_env = copy.deepcopy(env)
+        _, afterstate, _, _, _ = sim_env.step(action)
+        action_values.append(approximator.value(afterstate))
+    best_action = legal_moves[np.argmax(action_values)]
 
-    # Select the best action (based on highest visit count)
-    best_act, _ = td_mcts.best_action_distribution(root)
-    return best_act
+
+    return best_action
