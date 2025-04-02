@@ -30,7 +30,7 @@ jobs:
         pip install gdown cython
         gdown 1dZvbZRG0lzuuWwvzMvZQ0JdZ7rQ55pE1 -O approximator.pkl
         cd libenv2048
-        python setup build_ext --inplace
+        python setup.py build_ext --inplace
         cd ..
 
     - name: 3. Ensure env.so is executable
