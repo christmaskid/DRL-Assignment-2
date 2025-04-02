@@ -5,7 +5,7 @@ import numpy as np
 
 # Node for TD-MCTS using the TD-trained value approximator
 class TD_MCTS_Node:
-    def __init__(self, state, score, parent=None, action=None):
+    def __init__(self, env, state, score, parent=None, action=None):
         self.state = state
         self.score = score
         self.parent = parent
@@ -83,7 +83,7 @@ class TD_MCTS:
                 i, j = random.choice(empty_cells)
                 tile_value = 2 if random.random() < 0.9 else 4
                 next_state[i, j] = tile_value
-                node.children[(i, j, tile_value)] = TD_MCTS_Node(state=next_state.copy(), score=next_score, parent=node)
+                node.children[(i, j, tile_value)] = TD_MCTS_Node(self.env, state=next_state.copy(), score=next_score, parent=node)
             
             node = self.select_child(node)
 
@@ -91,7 +91,7 @@ class TD_MCTS:
             action = random.choice(node.untried_actions)
             node.untried_actions.remove(action)
             next_state, _, next_score, _, _ = sim_env.step(action)
-            node.children[action] = TD_MCTS_Node(state=next_state, score=next_score, parent=node, action=action)
+            node.children[action] = TD_MCTS_Node(self.env, state=next_state, score=next_score, parent=node, action=action)
             node = node.children[action]
 
         rollout_reward = self.rollout(sim_env, self.rollout_depth)
