@@ -5,8 +5,10 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import pickle
 import sys, os
+import random
 
-from env2048 import Game2048Env
+# from env2048 import Game2048Env
+from libenv2048.env2048compiled import Game2048Env
 
 # -------------------------------
 # TODO: Define transformation functions (rotation and reflection), i.e., rot90, rot180, ..., etc.
@@ -92,10 +94,18 @@ class NTupleApproximator:
           for j in range(8):
             pattern= self.symmetry_patterns[i*8+j]
             feature = self.get_feature(board, pattern)
+
+            # Optimistic Initialization
+            if feature not in self.weights[i]:
+              if random.random() < 0.1:
+                 self.weights[i][feature] = 1e4
+              else:
+                 self.weights[i][feature] = 0
             self.weights[i][feature] += alpha * delta / len(self.symmetry_patterns)
 
 
-def td_learning(env, approximator, num_episodes=50000, alpha=0.01, gamma=0.99, epsilon=0.1, start_episode=0):
+def td_learning(env, approximator, num_episodes=50000, alpha=0.01, gamma=0.99, epsilon=0.1, start_episode=0,
+                save_fn = "approximator.pkl"):
     """
     Trains the 2048 agent using TD-Learning.
 
@@ -114,6 +124,7 @@ def td_learning(env, approximator, num_episodes=50000, alpha=0.01, gamma=0.99, e
         state = env.reset()
         trajectory = []  # Store trajectory data if needed
         previous_score = 0
+        previous_afterstate = state.copy()
         done = False
         max_tile = np.max(state)
 
@@ -126,29 +137,29 @@ def td_learning(env, approximator, num_episodes=50000, alpha=0.01, gamma=0.99, e
             action_values = []
             for action in legal_moves:
                 sim_env = copy.deepcopy(env)
-                next_state, reward, _, _ = sim_env.step(action)
-                action_values.append(approximator.value(next_state))
+                next_state, afterstate, reward, _, _ = sim_env.step(action)
+                action_values.append(reward + gamma * approximator.value(afterstate))
             action = legal_moves[np.argmax(action_values)]
 
-            cur_state = np.copy(state)
-            next_state, new_score, done, _ = env.step(action)
+            next_state, afterstate, new_score, done, _ = env.step(action)
             incremental_reward = new_score - previous_score
             previous_score = new_score
             max_tile = max(max_tile, np.max(next_state))
 
             # TODO: Store trajectory or just update depending on the implementation
-            trajectory.append((cur_state, action, np.copy(next_state), incremental_reward, done))
+            trajectory.append((previous_afterstate.copy(), action, afterstate.copy(), incremental_reward, done))
 
             state = next_state
+            previous_afterstate = afterstate.copy()
 
         # TODO: If you are storing the trajectory, consider updating it now depending on your implementation.
         for t in reversed(range(len(trajectory))):
-          state, action, next_state, incremental_reward, done = trajectory[t]
+          state, action, afterstate, incremental_reward, done = trajectory[t]
           # print(next_state, "\n", state)
           if done:
             delta = incremental_reward - approximator.value(state)
           else:
-            delta = incremental_reward + gamma * approximator.value(next_state) - approximator.value(state)
+            delta = incremental_reward + gamma * approximator.value(afterstate) - approximator.value(state)
           approximator.update(state, delta, alpha)
 
 
@@ -161,7 +172,7 @@ def td_learning(env, approximator, num_episodes=50000, alpha=0.01, gamma=0.99, e
             success_rate = np.sum(success_flags[-sep:]) / sep
             print(f"Episode {episode+1}/{num_episodes} | Avg Score: {avg_score:.2f} | Success Rate: {success_rate:.2f}", flush=True)
             
-            pickle.dump(approximator, open("approximator.pkl", "wb"))
+            pickle.dump(approximator, open(save_fn, "wb"))
 
         # if (episode + 1) % 10 == 0:
         #     avg_score = np.mean(final_scores[-10:])
@@ -179,6 +190,7 @@ if __name__=="__main__":
         # https://ko19951231.github.io/2021/01/01/2048/
         ((1, 0), (1, 1), (2, 0), (2, 1), (3, 0), (3, 1)),
         ((1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)),
+        ((1, 2), (1, 3), (2, 2), (2, 3), (3, 2), (3, 3)),
         ((0, 0), (1, 0), (2, 0), (2, 1), (3, 0), (3, 1)),
         ((0, 1), (1, 1), (2, 1), (2, 2), (3, 1), (3, 2)),
     ]
@@ -194,7 +206,9 @@ if __name__=="__main__":
     # Run TD-Learning training
     # Note: To achieve significantly better performance, you will likely need to train for over 100,000 episodes.
     # However, to quickly verify that your implementation is working correctly, you can start by running it for 1,000 episodes before scaling up.
-    final_scores = td_learning(env, approximator, num_episodes=100000, alpha=0.1, gamma=0.99, epsilon=0.1, start_episode=start_episode)
+    final_scores = td_learning(
+       env, approximator, num_episodes=100000, alpha=0.1, gamma=0.99, epsilon=0.1, 
+       start_episode=start_episode, save_fn=sys.argv[3])
     pickle.dump(approximator, open("approximator.pkl", "wb"))
 
     plt.plot(final_scores)

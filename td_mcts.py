@@ -64,7 +64,7 @@ class TD_MCTS:
             uct_value = average
           else:
             uct_value = uct_values[child]
-          
+
           if selected_child is None or uct_value > best_score:
             best_score = uct_value
             selected_child = child
@@ -73,17 +73,18 @@ class TD_MCTS:
     def rollout(self, sim_env, depth):
         # TODO: Perform a random rollout until reaching the maximum depth or a terminal state.
         value_est = 0
+        afterstate = sim_env.board.copy()
         while depth > 0:
           legal_moves = [a for a in range(4) if sim_env.is_move_legal(a)]
           if len(legal_moves) == 0:
             break # leaf; game over
           action = random.choice(legal_moves)
-          _, reward,_, _ = sim_env.step(action)
+          _, afterstate, reward,_, _ = sim_env.step(action)
           depth -= 1
           value_est += self.gamma * reward
 
         # TODO: Use the approximator to evaluate the final state.
-        value_est += self.approximator.value(sim_env.board) # instead of sim_env.score
+        value_est += self.approximator.value(afterstate) # instead of sim_env.score
         return value_est
 
 
@@ -102,13 +103,13 @@ class TD_MCTS:
         # TODO: Selection: Traverse the tree until reaching an unexpanded node.
         while node.fully_expanded():
           node = self.select_child(node)
-          _, _, done, _ = sim_env.step(node.action)
+          _, _, _, done, _ = sim_env.step(node.action)
 
         # TODO: Expansion: If the node is not terminal, expand an untried action.
         if len(node.untried_actions) > 0:
           action = random.choice(node.untried_actions)
           node.untried_actions.remove(action)
-          next_state, next_score, done, _ = sim_env.step(action)
+          next_state, _, next_score, done, _ = sim_env.step(action)
           node.children[action] = TD_MCTS_Node(self.env, state=next_state, score=next_score, parent=node, action=action)
           node = node.children[action]
 

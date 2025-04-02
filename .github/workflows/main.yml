@@ -27,8 +27,11 @@ jobs:
       run: |
         pip install gym
         pip install -r requirements.txt
-        pip install gdown
-        gdown 1dYOwK_qmufzQ6o7LALNrE10Jbpvg6uuV -O approximator.pkl
+        pip install gdown, cython
+        gdown 1dZvbZRG0lzuuWwvzMvZQ0JdZ7rQ55pE1 -O approximator.pkl
+        cd libenv2048
+        python setup build_ext --inplace
+        cd ..
 
     - name: 3. Ensure env.so is executable
       run: chmod +x env.cpython-38-x86_64-linux-gnu.so
