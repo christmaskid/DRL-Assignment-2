@@ -10,7 +10,7 @@ import random
 import math
 
 from q1 import NTupleApproximator
-from libenv2048.libenv2048 import Game2048Env
+from libenv2048.env2048compiled import Game2048Env
 
 import sys
 sys.modules['__main__'].NTupleApproximator = NTupleApproximator
