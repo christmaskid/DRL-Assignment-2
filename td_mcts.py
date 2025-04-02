@@ -3,18 +3,9 @@ import random
 import math
 import numpy as np
 
-# Note: This MCTS implementation is almost identical to the previous one,
-# except for the rollout phase, which now incorporates the approximator.
-
 # Node for TD-MCTS using the TD-trained value approximator
 class TD_MCTS_Node:
-    def __init__(self, env, state, score, parent=None, action=None):
-        """
-        state: current board state (numpy array)
-        score: cumulative score at this node
-        parent: parent node (None for root)
-        action: action taken from parent to reach this node
-        """
+    def __init__(self, state, score, parent=None, action=None):
         self.state = state
         self.score = score
         self.parent = parent
@@ -22,15 +13,11 @@ class TD_MCTS_Node:
         self.children = {}
         self.visits = 0
         self.total_reward = 0.0
-        # List of untried actions based on the current state's legal moves
         self.untried_actions = [a for a in range(4) if env.is_move_legal(a)]
-
+    
     def fully_expanded(self):
-        # A node is fully expanded if no legal actions remain untried.
-        return len(self.untried_actions) == 0
+        return len(self.untried_actions) == 0 and len(self.children) > 0
 
-
-# TD-MCTS class utilizing a trained approximator for leaf evaluation
 class TD_MCTS:
     def __init__(self, env, approximator, iterations=500, exploration_constant=1.41, rollout_depth=10, gamma=0.99):
         self.env = env
@@ -41,108 +28,81 @@ class TD_MCTS:
         self.gamma = gamma
 
     def create_env_from_state(self, state, score):
-        # Create a deep copy of the environment with the given state and score.
         new_env = copy.deepcopy(self.env)
         new_env.board = state.copy()
         new_env.score = score
         return new_env
 
     def select_child(self, node):
-        # TODO: Use the UCT formula: Q + c * sqrt(log(parent.visits)/child.visits) to select the best child.
-        selected_child = None
+        best_child = None
         best_score = -float('inf')
-        uct_values = dict()
-
-        # Level one: choose an action according to the uct values
+        
         for child in node.children.values():
-          if child.visits > 0:
-            uct_values[child] = child.total_reward + self.c * math.sqrt(math.log(node.visits) / child.visits)
-        average = sum(uct_values.values()) / len(uct_values)
-        # print(uct_values.values(), average)
+            if child.visits > 0:
+                uct_value = (child.total_reward / child.visits) + self.c * math.sqrt(math.log(max(1, node.visits)) / (child.visits + 1))
+            else:
+                uct_value = float('inf')
 
-        for child in node.children.values():
-          if child.visits == 0:
-            uct_value = average
-          else:
-            uct_value = uct_values[child]
-
-          if selected_child is None or uct_value > best_score:
-            best_score = uct_value
-            selected_child = child
-
-        # Level two: add an random tile according to the distribution
-        distribution = []
-        selections = []
-        for child in selected_child.children.values():
-           distribution.append(child.visits)
-           selections.append(child)
-        selected_child = selections[np.argmax(distribution)]
-
-        return selected_child
+            if uct_value > best_score:
+                best_score = uct_value
+                best_child = child
+        
+        return best_child
 
     def rollout(self, sim_env, depth):
-        # TODO: Perform a random rollout until reaching the maximum depth or a terminal state.
-        value_est = 0
         afterstate = sim_env.board.copy()
         while depth > 0:
-          legal_moves = [a for a in range(4) if sim_env.is_move_legal(a)]
-          if len(legal_moves) == 0:
-            break # leaf; game over
-          action = random.choice(legal_moves)
-          _, afterstate, _, _, _ = sim_env.step(action)
-          depth -= 1
-
-        # TODO: Use the approximator to evaluate the final state.
-        value_est = self.approximator.value(afterstate) # instead of sim_env.score
-        return value_est
-
+            legal_moves = [a for a in range(4) if sim_env.is_move_legal(a)]
+            if not legal_moves:
+                break
+            action = random.choice(legal_moves)
+            _, afterstate, _, _, _ = sim_env.step(action)
+            depth -= 1
+        return self.approximator.value(afterstate)
 
     def backpropagate(self, node, reward):
-        # TODO: Propagate the obtained reward back up the tree.
         while node:
-          node.visits += 1
-          node.total_reward += (reward - node.total_reward) / node.visits
-          node = node.parent.parent
-
+            node.visits += 1
+            node.total_reward += self.gamma * reward
+            reward = self.gamma * reward
+            node = node.parent
 
     def run_simulation(self, root):
         node = root
         sim_env = self.create_env_from_state(node.state, node.score)
 
-        # TODO: Selection: Traverse the tree until reaching an unexpanded node.
-        done = False
-        while node.fully_expanded() and not done:
-          node = self.select_child(node)
-          _, _, _, done, _ = sim_env.step(node.parent.action)
+        while node.fully_expanded():
+            node = self.select_child(node)
+            _, next_state, next_score, done, _ = sim_env.step(node.action)
 
-        # TODO: Expansion: If the node is not terminal, expand an untried action.
-        if len(node.untried_actions) > 0:
-          action = random.choice(node.untried_actions)
-          node.untried_actions.remove(action)
-          next_state, afterstate, next_score, _, _ = sim_env.step(action)
-          # Expand level one: action
-          node.children[action] = TD_MCTS_Node(self.env, state=afterstate, score=next_score, parent=node, action=action)
-          node = node.children[action]
-          # Expand level two: random tile addition
-          def np_to_tuple(board):
-             return tuple(tuple(b) for b in board)
-          node.children[np_to_tuple(next_state)] = TD_MCTS_Node(self.env, state=next_state, score=next_score, parent=node, action=None)
-          node = node.children[np_to_tuple(next_state)]
+            if done:
+                break
+            
+            empty_cells = [(i, j) for i in range(4) for j in range(4) if next_state[i, j] == 0]
+            if empty_cells:
+                i, j = random.choice(empty_cells)
+                tile_value = 2 if random.random() < 0.9 else 4
+                next_state[i, j] = tile_value
+                node.children[(i, j, tile_value)] = TD_MCTS_Node(state=next_state.copy(), score=next_score, parent=node)
+            
+            node = self.select_child(node)
 
-        # Rollout: Simulate a random game from the expanded node.
+        if node.untried_actions:
+            action = random.choice(node.untried_actions)
+            node.untried_actions.remove(action)
+            next_state, _, next_score, _, _ = sim_env.step(action)
+            node.children[action] = TD_MCTS_Node(state=next_state, score=next_score, parent=node, action=action)
+            node = node.children[action]
+
         rollout_reward = self.rollout(sim_env, self.rollout_depth)
-        # Backpropagate the obtained reward.
         self.backpropagate(node, rollout_reward)
 
     def best_action_distribution(self, root):
-        # Compute the normalized visit count distribution for each child of the root.
         total_visits = sum(child.visits for child in root.children.values())
         distribution = np.zeros(4)
-        best_visits = -1
-        best_action = None
+        best_action = max(root.children, key=lambda a: root.children[a].visits, default=None)
+        
         for action, child in root.children.items():
             distribution[action] = child.visits / total_visits if total_visits > 0 else 0
-            if child.visits > best_visits:
-                best_visits = child.visits
-                best_action = action
+        
         return best_action, distribution
