@@ -1,26 +1,20 @@
+# Remember to adjust your student ID in meta.xml
 import numpy as np
+import pickle
 import random
 import gym
 from gym import spaces
 import matplotlib.pyplot as plt
+import copy
+import random
+import math
 
-COLOR_MAP = {
-    0: "#cdc1b4", 2: "#eee4da", 4: "#ede0c8", 8: "#f2b179",
-    16: "#f59563", 32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72",
-    256: "#edcc61", 512: "#edc850", 1024: "#edc53f", 2048: "#edc22e",
-    4096: "#3c3a32", 8192: "#3c3a32", 16384: "#3c3a32", 32768: "#3c3a32"
-}
-TEXT_COLOR = {
-    2: "#776e65", 4: "#776e65", 8: "#f9f6f2", 16: "#f9f6f2",
-    32: "#f9f6f2", 64: "#f9f6f2", 128: "#f9f6f2", 256: "#f9f6f2",
-    512: "#f9f6f2", 1024: "#f9f6f2", 2048: "#f9f6f2", 4096: "#f9f6f2"
-}
 
 class Game2048Env(gym.Env):
     def __init__(self):
         super(Game2048Env, self).__init__()
 
-        self.size = 4
+        self.size = 4  # 4x4 2048 board
         self.board = np.zeros((self.size, self.size), dtype=int)
         self.score = 0
 
@@ -28,11 +22,12 @@ class Game2048Env(gym.Env):
         self.action_space = spaces.Discrete(4)
         self.actions = ["up", "down", "left", "right"]
 
-        self.last_move_valid = True
+        self.last_move_valid = True  # Record if the last move was valid
 
         self.reset()
 
     def reset(self):
+        """Reset the environment"""
         self.board = np.zeros((self.size, self.size), dtype=int)
         self.score = 0
         self.add_random_tile()
@@ -40,17 +35,20 @@ class Game2048Env(gym.Env):
         return self.board
 
     def add_random_tile(self):
+        """Add a random tile (2 or 4) to an empty cell"""
         empty_cells = list(zip(*np.where(self.board == 0)))
         if empty_cells:
             x, y = random.choice(empty_cells)
             self.board[x, y] = 2 if random.random() < 0.9 else 4
 
     def compress(self, row):
-        new_row = row[row != 0]
-        new_row = np.pad(new_row, (0, self.size - len(new_row)), mode='constant')
+        """Compress the row: move non-zero values to the left"""
+        new_row = row[row != 0]  # Remove zeros
+        new_row = np.pad(new_row, (0, self.size - len(new_row)), mode='constant')  # Pad with zeros on the right
         return new_row
 
     def merge(self, row):
+        """Merge adjacent equal numbers in the row"""
         for i in range(len(row) - 1):
             if row[i] == row[i + 1] and row[i] != 0:
                 row[i] *= 2
@@ -59,6 +57,7 @@ class Game2048Env(gym.Env):
         return row
 
     def move_left(self):
+        """Move the board left"""
         moved = False
         for i in range(self.size):
             original_row = self.board[i].copy()
@@ -71,9 +70,11 @@ class Game2048Env(gym.Env):
         return moved
 
     def move_right(self):
+        """Move the board right"""
         moved = False
         for i in range(self.size):
             original_row = self.board[i].copy()
+            # Reverse the row, compress, merge, compress, then reverse back
             reversed_row = self.board[i][::-1]
             reversed_row = self.compress(reversed_row)
             reversed_row = self.merge(reversed_row)
@@ -84,6 +85,7 @@ class Game2048Env(gym.Env):
         return moved
 
     def move_up(self):
+        """Move the board up"""
         moved = False
         for j in range(self.size):
             original_col = self.board[:, j].copy()
@@ -96,9 +98,11 @@ class Game2048Env(gym.Env):
         return moved
 
     def move_down(self):
+        """Move the board down"""
         moved = False
         for j in range(self.size):
             original_col = self.board[:, j].copy()
+            # Reverse the column, compress, merge, compress, then reverse back
             reversed_col = self.board[:, j][::-1]
             reversed_col = self.compress(reversed_col)
             reversed_col = self.merge(reversed_col)
@@ -109,12 +113,18 @@ class Game2048Env(gym.Env):
         return moved
 
     def is_game_over(self):
+        """Check if there are no legal moves left"""
+        # If there is any empty cell, the game is not over
         if np.any(self.board == 0):
             return False
+
+        # Check horizontally
         for i in range(self.size):
             for j in range(self.size - 1):
                 if self.board[i, j] == self.board[i, j+1]:
                     return False
+
+        # Check vertically
         for j in range(self.size):
             for i in range(self.size - 1):
                 if self.board[i, j] == self.board[i+1, j]:
@@ -123,6 +133,7 @@ class Game2048Env(gym.Env):
         return True
 
     def step(self, action):
+        """Execute one action"""
         assert self.action_space.contains(action), "Invalid action"
 
         if action == 0:
@@ -136,17 +147,20 @@ class Game2048Env(gym.Env):
         else:
             moved = False
 
-        self.last_move_valid = moved
-        afterstate = self.board.copy()
+        self.last_move_valid = moved  # Record if the move was valid
 
         if moved:
             self.add_random_tile()
 
         done = self.is_game_over()
 
-        return self.board, afterstate, self.score, done, {}
+        return self.board, self.score, done, {}
 
     def render(self, mode="human", action=None):
+        """
+        Render the current board using Matplotlib.
+        This function does not check if the action is valid and only displays the current board state.
+        """
         fig, ax = plt.subplots(figsize=(4, 4))
         ax.set_xticks([])
         ax.set_yticks([])
@@ -156,7 +170,7 @@ class Game2048Env(gym.Env):
         for i in range(self.size):
             for j in range(self.size):
                 value = self.board[i, j]
-                color = COLOR_MAP.get(value, "#3c3a32")
+                color = COLOR_MAP.get(value, "#3c3a32")  # Default dark color
                 text_color = TEXT_COLOR.get(value, "white")
                 rect = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, facecolor=color, edgecolor="black")
                 ax.add_patch(rect)
@@ -172,17 +186,23 @@ class Game2048Env(gym.Env):
         plt.show()
 
     def simulate_row_move(self, row):
+        """Simulate a left move for a single row"""
+        # Compress: move non-zero numbers to the left
         new_row = row[row != 0]
         new_row = np.pad(new_row, (0, self.size - len(new_row)), mode='constant')
+        # Merge: merge adjacent equal numbers (do not update score)
         for i in range(len(new_row) - 1):
             if new_row[i] == new_row[i + 1] and new_row[i] != 0:
                 new_row[i] *= 2
                 new_row[i + 1] = 0
+        # Compress again
         new_row = new_row[new_row != 0]
         new_row = np.pad(new_row, (0, self.size - len(new_row)), mode='constant')
         return new_row
 
     def is_move_legal(self, action):
+        """Check if the specified move is legal (i.e., changes the board)"""
+        # Create a copy of the current board state
         temp_board = self.board.copy()
 
         if action == 0:  # Move up
@@ -192,6 +212,7 @@ class Game2048Env(gym.Env):
                 temp_board[:, j] = new_col
         elif action == 1:  # Move down
             for j in range(self.size):
+                # Reverse the column, simulate, then reverse back
                 col = temp_board[:, j][::-1]
                 new_col = self.simulate_row_move(col)
                 temp_board[:, j] = new_col[::-1]
@@ -206,4 +227,25 @@ class Game2048Env(gym.Env):
                 temp_board[i] = new_row[::-1]
         else:
             raise ValueError("Invalid action")
+
+        # If the simulated board is different from the current board, the move is legal
         return not np.array_equal(self.board, temp_board)
+
+from mcts import *
+
+def get_action(state, score):
+    env = Game2048Env()
+    # return random.choice([0, 1, 2, 3]) # Choose a random action
+    
+    uct_mcts = UCTMCTS(env, iterations=50, exploration_constant=1.41, rollout_depth=10)
+    root = UCTNode(env, state, score)  # Initialize the root node for MCTS
+    
+    # Run multiple simulations to construct and refine the search tree
+    for _ in range(uct_mcts.iterations):
+        uct_mcts.run_simulation(root)
+
+    # Select the best action based on the visit distribution of the root's children
+    best_action, visit_distribution = uct_mcts.best_action_distribution(root)
+    # print("MCTS selected action:", best_action, "with visit distribution:", visit_distribution)
+
+    return best_action
