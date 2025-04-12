@@ -23,7 +23,7 @@ patterns = [
         ((0, 1), (1, 1), (2, 1), (2, 2), (3, 1), (3, 2)),
     ]
 approximator = NTupleApproximator(board_size=4, patterns=patterns)
-approximator = pickle.load(open("approximator_4_6.pkl", "rb"))
+approximator = pickle.load(open("approximator.pkl", "rb"))
 # approximator = pickle.load(open("approximator_new_1.pkl", "rb"))
 
 def get_action(state, score):
