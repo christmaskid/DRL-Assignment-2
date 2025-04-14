@@ -94,13 +94,13 @@ class TD_MCTS:
             uct_value = q + self.c * math.sqrt(math.log(node.visits) / child.visits)
             # print("q", q, "explore_term", uct_value-q, "uct", uct_value)
 
-            # print(child.action, child.visits, self.approximator.value(child.afterstate)+child.score, child.total_reward, uct_value, flush=True)
+            print(child.action, child.visits, self.approximator.value(child.afterstate)+child.score, child.total_reward, uct_value, flush=True)
             
             if uct_value > best_score:
               best_score, selected_child = uct_value, child
 
           selected_action = selected_child.action
-          # print()
+          print()
 
         else:
         #   best_score = -float('inf')
@@ -124,7 +124,7 @@ class TD_MCTS:
 
     # def rollout(self, sim_env, depth): # random rollout
     #     afterstate = sim_env.board
-    #     print("init", self.approximator.value(sim_env.board), sim_env.score, flush=True)
+    #     # print("init", self.approximator.value(sim_env.board), sim_env.score, flush=True)
     #     while depth>0:
     #       legal_moves = [a for a in range(4) if sim_env.is_move_legal(a)]
     #       if not legal_moves:
@@ -132,10 +132,10 @@ class TD_MCTS:
     #       action = random.choice(legal_moves)
     #       _, afterstate, _, _, _ = sim_env.step(action)
     #       depth -= 1
-    #     print("rollout", self.approximator.value(sim_env.board), sim_env.score, flush=True)
+    #     # print("rollout", self.approximator.value(sim_env.board), sim_env.score, flush=True)
     #     # print(self.approximator.value(sim_env.board), np.max(sim_env.board))
-    #     # return self.approximator.value(sim_env.board) + sim_env.score
-    #     return self.approximator.value(afterstate) + sim_env.score
+    #     return self.approximator.value(sim_env.board) + sim_env.score
+    #     # return self.approximator.value(afterstate) + sim_env.score
 
     def rollout(self, sim_env, depth): # greedy rollout
       done = False
@@ -157,10 +157,8 @@ class TD_MCTS:
           _, _, _, done, _ = sim_env.step(best_action)
           depth -= 1
         #   print("rollout", depth, self.approximator.value(sim_env.board), sim_env.score, flush=True)
-      value_est = 0
     #   print("rollout", self.approximator.value(sim_env.board), sim_env.score, flush=True)
-      value_est += self.approximator.value(sim_env.board) #if not done else 0
-    #   value_est += sim_env.score
+      value_est = self.approximator.value(afterstate) + sim_env.score
       return value_est
 
 

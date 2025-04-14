@@ -22,7 +22,7 @@ def get_action(state, score):
     env.board = state
     env.score = score
         
-    td_mcts = TD_MCTS(env, approximator, iterations=50, exploration_constant=1.41, rollout_depth=12, gamma=0.99)
+    td_mcts = TD_MCTS(env, approximator, iterations=50, exploration_constant=1.41, rollout_depth=0, gamma=0.99)
     root = TD_MCTS_Node(env, state, score)
 
     # Run multiple simulations to build the MCTS tree
