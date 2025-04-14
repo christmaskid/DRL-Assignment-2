@@ -94,20 +94,37 @@ class TD_MCTS:
             uct_value = q + self.c * math.sqrt(math.log(node.visits) / child.visits)
             # print("q", q, "explore_term", uct_value-q, "uct", uct_value)
 
+            # print(child.action, child.visits, self.approximator.value(child.afterstate)+child.score, child.total_reward, uct_value, flush=True)
+            
             if uct_value > best_score:
               best_score, selected_child = uct_value, child
 
           selected_action = selected_child.action
+          # print()
 
         else:
-          best_score = -float('inf')
-          selected_child = random.choice(list(node.children.values()))
+        #   best_score = -float('inf')
+        #   selected_child = random.choice(list(node.children.values()))
+        
+          keys = node.children.keys()
+          twos = [(i,j,tile) for (i,j,tile) in keys if tile==2]
+          fours = [(i,j,tile) for (i,j,tile) in keys if tile==4]
+          if len(twos) == 0:
+            selected_action = random.choice(fours)
+          elif len(fours) == 0:
+            selected_action = random.choice(twos)
+          elif random.random() < 0.9:
+            selected_action = random.choice(twos)
+          else:
+            selected_action = random.choice(fours)
+          selected_child = node.children[selected_action]
 
         # print(node, selected_child)#, selected_action)
         return selected_child
 
     # def rollout(self, sim_env, depth): # random rollout
     #     afterstate = sim_env.board
+    #     print("init", self.approximator.value(sim_env.board), sim_env.score, flush=True)
     #     while depth>0:
     #       legal_moves = [a for a in range(4) if sim_env.is_move_legal(a)]
     #       if not legal_moves:
@@ -115,12 +132,14 @@ class TD_MCTS:
     #       action = random.choice(legal_moves)
     #       _, afterstate, _, _, _ = sim_env.step(action)
     #       depth -= 1
+    #     print("rollout", self.approximator.value(sim_env.board), sim_env.score, flush=True)
     #     # print(self.approximator.value(sim_env.board), np.max(sim_env.board))
     #     # return self.approximator.value(sim_env.board) + sim_env.score
     #     return self.approximator.value(afterstate) + sim_env.score
 
     def rollout(self, sim_env, depth): # greedy rollout
       done = False
+    #   print("init", self.approximator.value(sim_env.board), sim_env.score, flush=True)
       while depth > 0:
           legal_moves = [a for a in range(4) if sim_env.is_move_legal(a)]
           if not legal_moves:
@@ -137,19 +156,24 @@ class TD_MCTS:
                   best_action = a
           _, _, _, done, _ = sim_env.step(best_action)
           depth -= 1
+        #   print("rollout", depth, self.approximator.value(sim_env.board), sim_env.score, flush=True)
       value_est = 0
+    #   print("rollout", self.approximator.value(sim_env.board), sim_env.score, flush=True)
       value_est += self.approximator.value(sim_env.board) #if not done else 0
-      value_est += sim_env.score
+    #   value_est += sim_env.score
       return value_est
 
 
     def backpropagate(self, node, reward):
-        child = node
+        # print("backprop", reward, end=" ")
         while node:
+          # print(" {}({})->".format(node.total_reward, node.visits), end="")
           node.visits += 1
           node.total_reward += (reward - node.total_reward) / node.visits
-          reward *= self.gamma # decreasing
+          # print("{}({}), ".format(node.total_reward, node.visits), end="")
+          # reward *= self.gamma # decreasing
           node = node.parent
+        # print("\n")
 
     def run_simulation(self, root):
         node = root
