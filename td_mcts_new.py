@@ -6,7 +6,6 @@ import math
 import numpy as np
 
 MIN_RAND_NODES=4
-Q_NORM_VALUE=1 #30 #1 #0.5
 
 # Node for TD-MCTS using the TD-trained value approximator
 class TD_MCTS_Node:
@@ -36,7 +35,7 @@ class After_Node:
         self.total_reward = 0.0
 
         self.children = {}
-        self.untried_actions_num = min(len(np.where(afterstate==0)[0]), MIN_RAND_NODES)
+        self.untried_actions_num = min(len(np.where(afterstate==0)[0])*2, MIN_RAND_NODES) # BUG FOUND: *2!!! (two types of tiles)
 
     def fully_expanded(self):
       return self.untried_actions_num==0 and len(self.children)>0
@@ -89,18 +88,18 @@ class TD_MCTS:
             if max_q==min_q:
               q = 0
             else:
-              q = (q-min_q)/(max_q-min_q) * Q_NORM_VALUE
+              q = (q-min_q)/(max_q-min_q)
 
             uct_value = q + self.c * math.sqrt(math.log(node.visits) / child.visits)
-            # print("q", q, "explore_term", uct_value-q, "uct", uct_value)
+            # print(child.action, "q", q, "explore_term", uct_value-q, "uct", uct_value)
 
-            print(child.action, child.visits, self.approximator.value(child.afterstate)+child.score, child.total_reward, uct_value, flush=True)
+            # print(child.action, child.visits, self.approximator.value(child.afterstate)+child.score, child.total_reward,uct_value, flush=True)
             
             if uct_value > best_score:
               best_score, selected_child = uct_value, child
 
           selected_action = selected_child.action
-          print()
+          # print()
 
         else:
         #   best_score = -float('inf')
@@ -113,7 +112,7 @@ class TD_MCTS:
             selected_action = random.choice(fours)
           elif len(fours) == 0:
             selected_action = random.choice(twos)
-          elif random.random() < 0.9:
+          elif random.random() < 0.9: # 9:1
             selected_action = random.choice(twos)
           else:
             selected_action = random.choice(fours)
@@ -139,8 +138,9 @@ class TD_MCTS:
 
     def rollout(self, sim_env, depth): # greedy rollout
       done = False
+      afterstate = sim_env.board.copy()
     #   print("init", self.approximator.value(sim_env.board), sim_env.score, flush=True)
-      while depth > 0:
+      while depth > 0: # and not done:
           legal_moves = [a for a in range(4) if sim_env.is_move_legal(a)]
           if not legal_moves:
               break
@@ -154,13 +154,13 @@ class TD_MCTS:
               if value > best_score:
                   best_score = value
                   best_action = a
-          _, _, _, done, _ = sim_env.step(best_action)
+          _, afterstate, _, done, _ = sim_env.step(best_action)
           depth -= 1
         #   print("rollout", depth, self.approximator.value(sim_env.board), sim_env.score, flush=True)
     #   print("rollout", self.approximator.value(sim_env.board), sim_env.score, flush=True)
       value_est = self.approximator.value(afterstate) + sim_env.score
+      print("value_est", self.approximator.value(afterstate), sim_env.score)
       return value_est
-
 
     def backpropagate(self, node, reward):
         # print("backprop", reward, end=" ")
@@ -189,6 +189,8 @@ class TD_MCTS:
             afterstate = sim_env.board.copy()
             afterstate[i, j] = tile
             sim_env.board = afterstate.copy()
+            done = sim_env.is_game_over() # BUG FOUND
+
           if done:
             break
 
@@ -203,16 +205,16 @@ class TD_MCTS:
             node = node.children[action]
 
           elif isinstance(node, After_Node) and node.untried_actions_num>0: # add an random tile
-            action = self.select_random_tile(node)
+            action = self.select_random_tile(node) # 9:1
             node.untried_actions_num -= 1
             i, j, tile = action
             sim_env.board[i, j] = tile
             node.children[action] = TD_MCTS_Node(self.env, state=sim_env.board.copy(), score=sim_env.score, parent=node, action=action)
             # print("Expand a random tile:", node, action, node.children[action])
             node = node.children[action]
-
-        rollout_reward = self.rollout(sim_env, self.rollout_depth)
-        # rollout_reward = self.approximator.value(sim_env.board) + sim_env.score
+      
+        # rollout_reward = self.rollout(sim_env, self.rollout_depth)
+        rollout_reward = (self.approximator.value(afterstate) if not done else 0) + sim_env.score
         self.backpropagate(node, rollout_reward)
 
     def best_action_distribution(self, root):
