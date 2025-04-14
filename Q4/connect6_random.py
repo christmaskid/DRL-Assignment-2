@@ -1,9 +1,6 @@
 import sys
 import numpy as np
-from tqdm import tqdm
-
-from lib_connect6_env.mcts_connect6_new import Connect6UCTNode, Connect6UCTMCTS
-from lib_connect6_env.connect6_env_new_new import Connect6GameEnv
+import random
 
 class Connect6Game:
     def __init__(self, size=19):
@@ -11,14 +8,12 @@ class Connect6Game:
         self.board = np.zeros((size, size), dtype=int)  # 0: Empty, 1: Black, 2: White
         self.turn = 1  # 1: Black, 2: White
         self.game_over = False
-        self.depth = 0
 
     def reset_board(self):
         """Clears the board and resets the game."""
         self.board.fill(0)
         self.turn = 1
         self.game_over = False
-        self.depth = 0
         print("= ", flush=True)
 
     def set_board_size(self, size):
@@ -70,7 +65,7 @@ class Connect6Game:
     def play_move(self, color, move):
         """Places stones and checks the game status."""
         if self.game_over:
-            print("? Game over", flush=True)
+            print("? Game over")
             return
 
         stones = move.split(',')
@@ -79,80 +74,46 @@ class Connect6Game:
         for stone in stones:
             stone = stone.strip()
             if len(stone) < 2:
-                print("? Invalid format", flush=True)
+                print("? Invalid format")
                 return
             col_char = stone[0].upper()
             if not col_char.isalpha():
-                print("? Invalid format", flush=True)
+                print("? Invalid format")
                 return
             col = self.label_to_index(col_char)
             try:
                 row = int(stone[1:]) - 1
             except ValueError:
-                print("? Invalid format", flush=True)
+                print("? Invalid format")
                 return
             if not (0 <= row < self.size and 0 <= col < self.size):
-                print("? Move out of board range", flush=True)
+                print("? Move out of board range")
                 return
             if self.board[row, col] != 0:
-                print("? Position already occupied", flush=True)
+                print("? Position already occupied")
                 return
             positions.append((row, col))
 
         for row, col in positions:
             self.board[row, col] = 1 if color.upper() == 'B' else 2
-            
+
         self.turn = 3 - self.turn
         print('= ', end='', flush=True)
-        return
 
     def generate_move(self, color):
         """Generates a random move for the computer."""
         if self.game_over:
             print("? Game over")
             return
-        
-        depth = np.sum(self.board > 0)
-        turn = 1 if color.upper() == 'B' else 2
-        if depth%4 in [1,2]:
-            first_player = 3 - turn
-        else:
-            first_player = turn
-        
-        sim_env = Connect6GameEnv(
-            first_player,
-            board=self.board, 
-            depth=self.depth
-        )
-        uct_mcts = Connect6UCTMCTS(
-            env=sim_env,
-            exploration_constant=1.414,  # UCT exploration parameter
-            iterations=100,  # Can increase due to smaller action space
-            rollout_depth=3,  # Can increase due to faster iterations
-        )
-        legal_moves = sim_env.get_legal_actions()
-        root = Connect6UCTNode(
-            untried_actions = legal_moves,
-            state = self.board.copy(),
-            score = sim_env.score,
-            parent=None, action=None
-        )
-        sim_env.show_board_err(legal_moves)
-        
-        for _ in tqdm(range(uct_mcts.iterations)):
-            # print("Iteration", _, flush=True, file=sys.stderr)
-            uct_mcts.run_simulation(root)
-        
-        selected, distribution = uct_mcts.best_action_distribution(root)
-        # print("selected", selected, distribution, flush=True, file=sys.stderr)
 
-        r, c = selected
-        move_str = f"{self.index_to_label(c)}{r+1}"
+        empty_positions = [(r, c) for r in range(self.size) for c in range(self.size) if self.board[r, c] == 0]
+        selected = random.sample(empty_positions, 1)
+        move_str = ",".join(f"{self.index_to_label(c)}{r+1}" for r, c in selected)
+        
         self.play_move(color, move_str)
 
         print(f"{move_str}\n\n", end='', flush=True)
-        print(move_str, file=sys.stderr, flush=True)
-        return
+        print(move_str, file=sys.stderr)
 
     def show_board(self):
         """Displays the board as text."""
@@ -166,12 +127,13 @@ class Connect6Game:
 
     def list_commands(self):
         """Lists all available commands."""
-        print("= ")  
+        print("= ", flush=True)  
 
     def process_command(self, command):
         """Parses and executes GTP commands."""
         command = command.strip()
         if command == "get_conf_str env_board_size:":
+            print(flush=True)
             return "env_board_size=19"
 
         if not command:
@@ -214,14 +176,13 @@ class Connect6Game:
         while True:
             try:
                 line = sys.stdin.readline()
-                # print(line, file=sys.stderr, flush=True)
                 if not line:
                     break
                 self.process_command(line)
             except KeyboardInterrupt:
                 break
-            except Exception as e:
-                print(f"? Error: {str(e)}")
+            # except Exception as e:
+            #     print(f"? Error: {str(e)}")
 
 if __name__ == "__main__":
     game = Connect6Game()

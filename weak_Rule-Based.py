@@ -94,46 +94,51 @@ class Connect6Game:
             middle = self.size // 2
             move_str = f"{self.index_to_label(middle)}{middle+1}"
             self.play_move(color, move_str)
-            
-            print(move_str, flush=True)
-            
             print(move_str, file=sys.stderr)
-
+            print(move_str, flush=True)
             return
+        
         my_color = 1 if color.upper() == 'B' else 2
         opponent_color = 3 - my_color
         empty_positions = [(r, c) for r in range(self.size) for c in range(self.size) if self.board[r, c] == 0]
         
         if random.uniform(0, 1) < 0.2:
+            print("0. Random", file=sys.stderr, flush=True)
             selected = random.choice(empty_positions)
             move_str = f"{self.index_to_label(selected[1])}{selected[0]+1}"
             self.play_move(color, move_str)
+            print(move_str, file=sys.stderr)
             print(move_str, flush=True)
             return
         
         # 1. Winning move
+        print("1. Winning move", file=sys.stderr, flush=True)
         for r, c in empty_positions:
             self.board[r, c] = my_color
             if self.check_win() == my_color:
                 self.board[r, c] = 0
                 move_str = f"{self.index_to_label(c)}{r+1}"
                 self.play_move(color, move_str)
+                print(move_str, file=sys.stderr)
                 print(move_str, flush=True)
                 return
             self.board[r, c] = 0
 
         # 2. Block opponent's winning move
+        print("2. Block opponent's winning move", file=sys.stderr, flush=True)
         for r, c in empty_positions:
             self.board[r, c] = opponent_color
             if self.check_win() == opponent_color:
                 self.board[r, c] = 0
                 move_str = f"{self.index_to_label(c)}{r+1}"
                 self.play_move(color, move_str)
+                print(move_str, file=sys.stderr)
                 print(move_str, flush=True)
                 return
             self.board[r, c] = 0
         
         # 3. Attack: prioritize strong formations
+        print("3. Attack: prioritize strong formations", file=sys.stderr, flush=True)
         best_move = None
         best_score = 0
         for r, c in empty_positions:
@@ -143,6 +148,7 @@ class Connect6Game:
                 best_move = (r, c)
 
         # 4. Defense: prevent opponent from forming strong positions
+        print("4. Defense: prevent opponent from forming strong positions", file=sys.stderr, flush=True)
         for r, c in empty_positions:
             opponent_score = self.evaluate_position(r, c, opponent_color)
             if opponent_score > best_score:
@@ -150,14 +156,17 @@ class Connect6Game:
                 best_move = (r, c)
 
         # 5. Execute best move
+        print("5. Execute best move", file=sys.stderr, flush=True)
         if best_move:
             r, c = best_move
             move_str = f"{self.index_to_label(c)}{r+1}"
             self.play_move(color, move_str)
+            print(move_str, file=sys.stderr)
             print(move_str, flush=True)
             return
 
         # 6. Default move: play near last opponent move
+        print("6. Default move: play near last opponent move", file=sys.stderr, flush=True)
         if self.last_opponent_move:
             
             last_r, last_c = self.last_opponent_move
@@ -168,15 +177,20 @@ class Connect6Game:
                 selected = random.choice(potential_moves)
                 move_str = f"{self.index_to_label(selected[1])}{selected[0]+1}"
                 self.play_move(color, move_str)
+                print(move_str, file=sys.stderr)
                 print(move_str, flush=True)
                 return
+            print("here", flush=True, file=sys.stderr)
 
         # 7. Random move as fallback
+        print("7. Random move as fallback", file=sys.stderr, flush=True)
         selected = random.choice(empty_positions)
         move_str = f"{self.index_to_label(selected[1])}{selected[0]+1}"
         self.play_move(color, move_str)
+        print(move_str, file=sys.stderr)
         print(move_str, flush=True)
         return
+    
     def evaluate_position(self, r, c, color):
         """Evaluates the strength of a position based on alignment potential."""
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
@@ -204,8 +218,8 @@ class Connect6Game:
             #elif count == 2:
             #    score += 100
             
-    
         return score
+    
     def show_board(self):
         """Displays the board in text format."""
         print("= ")
@@ -225,6 +239,8 @@ class Connect6Game:
         command = command.strip()
         if command == "get_conf_str env_board_size:":
             print("env_board_size=19", flush=True)
+            print(flush=True)
+            return
 
         if not command:
             return
@@ -266,6 +282,7 @@ class Connect6Game:
         while True:
             try:
                 line = sys.stdin.readline()
+                print(line, file=sys.stderr, flush=True)
                 if not line:
                     break
                 self.process_command(line)
@@ -273,6 +290,7 @@ class Connect6Game:
                 break
             except Exception as e:
                 print(f"? Error: {str(e)}")
+                print(flush=True)
 
 if __name__ == "__main__":
     game = Connect6Game()

@@ -177,8 +177,10 @@ class Connect6Game:
         selected = random.choice(empty_positions)
         move_str = f"{self.index_to_label(selected[1])}{selected[0]+1}"
         self.play_move(color, move_str)
+        print(move_str, flush=True, file=sys.stderr)
         print(move_str, flush=True)
         return
+
     def evaluate_position(self, r, c, color):
         """Evaluates the strength of a position based on alignment potential."""
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]

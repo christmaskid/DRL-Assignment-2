@@ -122,7 +122,7 @@ class Game2048Env(gym.Env):
 
         return True
 
-    def step(self, action):
+    def step(self, action):#, add_random_tile=True):
         assert self.action_space.contains(action), "Invalid action"
 
         if action == 0:
@@ -137,13 +137,14 @@ class Game2048Env(gym.Env):
             moved = False
 
         self.last_move_valid = moved
-        afterstate = self.board.copy()
+        afterstate = self.board.copy() # add this line to create after state
 
-        if moved:
+        if moved:# and add_random_tile:
             self.add_random_tile()
 
         done = self.is_game_over()
 
+        # return self.board, self.score, done, {}
         return self.board, afterstate, self.score, done, {}
 
     def render(self, mode="human", action=None):
