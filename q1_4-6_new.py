@@ -6,7 +6,8 @@ from tqdm import tqdm
 from collections import defaultdict
 import pickle
 from libenv2048.env2048compiled import Game2048Env
-CHECKPOINT_NAME = "approximator_4_6_my_new.pkl"
+CHECKPOINT_NAME = "approximator_4_6_my_new3.pkl"
+#2: conti, 3: from scratch
 
 # -------------------------------
 # TODO: Define transformation functions (rotation and reflection), i.e., rot90, rot180, ..., etc.
@@ -148,14 +149,14 @@ def td_learning(env, approximator, start_episode=1, num_episodes=50000, alpha=0.
 
         # TODO: If you are storing the trajectory, consider updating it now depending on your implementation.
         for t in reversed(range(len(trajectory))):
-          state, action, next_state, incremental_reward, done = trajectory[t]
+          prev_afterstate, action, afterstate, incremental_reward, done = trajectory[t]
           # print(state, "\n", next_state, "\n", incremental_reward, "\n\n")
-          delta = incremental_reward + approximator.value(next_state) - approximator.value(state)
+          delta = incremental_reward + approximator.value(afterstate) - approximator.value(prev_afterstate)
           approximator.update(state, delta, alpha)
 
           if done: # "next_state" is dead, not "state"!!!
-            delta2 = incremental_reward - approximator.value(next_state)
-            approximator.update(next_state, delta2, alpha)
+            delta2 = - approximator.value(afterstate) # BUG FOUND: NO INCREMENTAL REWARD HERE !!! ( = 0 )
+            approximator.update(afterstate, delta2, alpha)
 
 
         final_scores.append(env.score)
@@ -181,7 +182,7 @@ if __name__=="__main__":
         ((0, 1), (1, 1), (2, 1), (2, 2), (3, 1), (3, 2)),
     ]
     approximator = NTupleApproximator(board_size=4, patterns=patterns)
-    approximator = pickle.load(open("approximator_4_6_my.pkl", "rb"))
+    # approximator = pickle.load(open("approximator_4_6_my_new.pkl", "rb"))
     env = Game2048Env()
 
     # Run TD-Learning training
