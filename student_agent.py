@@ -31,6 +31,6 @@ def get_action(state, score):
 
     # Select the best action (based on highest visit count)
     best_act, _ = td_mcts.best_action_distribution(root)
-    print(env.board, "\nScore", env.score, flush=True)
-    print(best_act, _, flush=True)
+    # print(env.board, "\nScore", env.score, flush=True)
+    # print(best_act, _, flush=True)
     return best_act
