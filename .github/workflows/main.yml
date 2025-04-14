@@ -28,8 +28,9 @@ jobs:
         pip install gym
         pip install -r requirements.txt
         pip install gdown cython
-        gdown 1W-aCWEaa5D8YbXVCUf3Sb5SIAq4dO4mR -O approximator.pkl
-        gdown 11M7wgYEnKpWK6nIA8u0zYNeXDfw5RWiC -O approximator_4_6.pkl
+        # gdown 1W-aCWEaa5D8YbXVCUf3Sb5SIAq4dO4mR -O approximator.pkl
+        # gdown 11M7wgYEnKpWK6nIA8u0zYNeXDfw5RWiC -O approximator_4_6.pkl
+        gdown 1Ln6bwmeG7RL2MXEh6e7a1W_hS12y-f-p -O approximator_4_6_my.pkl
         cd libenv2048
         python setup.py build_ext --inplace
         cd ..
