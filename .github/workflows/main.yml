@@ -31,7 +31,8 @@ jobs:
         # gdown 1W-aCWEaa5D8YbXVCUf3Sb5SIAq4dO4mR -O approximator.pkl
         # gdown 11M7wgYEnKpWK6nIA8u0zYNeXDfw5RWiC -O approximator_4_6.pkl
         gdown 1Ln6bwmeG7RL2MXEh6e7a1W_hS12y-f-p -O approximator_4_6_my.pkl
-        gdown 1ddFxsYIxDoENwK9hByAMsE9S55gJ9uUv -O approximator_4_6_my_new.pkl
+        # gdown 1ddFxsYIxDoENwK9hByAMsE9S55gJ9uUv -O approximator_4_6_my_new.pkl
+        gdown 1KxD1NMupB248GCYIFOfttlqgoVTaaeyE -O approximator_4_6_my_new.pkl
         # cd libenv2048
         # python setup.py build_ext --inplace
         # cd ..
