@@ -7,8 +7,7 @@ import pickle
 import sys, os
 import random
 
-# from env2048 import Game2048Env
-from libenv2048.env2048compiled import Game2048Env
+from env2048 import Game2048Env
 
 # -------------------------------
 # TODO: Define transformation functions (rotation and reflection), i.e., rot90, rot180, ..., etc.
